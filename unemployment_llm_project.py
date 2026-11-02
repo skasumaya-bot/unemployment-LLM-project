@@ -521,7 +521,7 @@ print(
 
 print(
     f"Assumed Directional Policy Index: "
-    f"{policy_unemployment_effect_index:.3f}"
+    f"{assumed_directional_policy_index:.3f}"
 )
 
 
@@ -1132,7 +1132,7 @@ print(
 
 print(
     f"Assumed Directional Policy Index: "
-    f"{policy_unemployment_effect_index:.3f}"
+    f"{assumed_directional_policy_index:.3f}"
 )
 
 
