@@ -1,15 +1,15 @@
-# Economic Policy Classification with Python and AI
+# Economic Policy Classification with Python and Language Models
 
-This project explores how Python and an AI language model can classify short economic policy statements. It connects economic policy analysis with practical text analysis.
+This project explores how Python and a pretrained language model can classify short economic policy statements. It connects economic policy analysis with practical text analysis.
 
 ## What does the project do?
 
 The project reads 10 example policy statements from an Excel file and classifies each statement in two ways:
 
 - **Keyword rules:** look for phrases such as “interest rate” or “public investment.”
-- **AI model:** use the pretrained BART-large-MNLI model to choose a policy category.
+- **Language model:** use the pretrained BART-large-MNLI model to choose a policy category.
 
-It compares these classifications with human labels, checks mistakes, and saves the results in Excel and charts. The AI model is used as provided, without additional training on these examples.
+It compares these classifications with human labels, checks mistakes, and saves the results in Excel and charts. The language model is used as provided, without additional training on these examples.
 
 ## Policy categories
 
@@ -29,9 +29,9 @@ The original demonstration reported:
 | Method | Correct classifications | Accuracy |
 |---|---:|---:|
 | Keyword rules | 10 out of 10 | 100% |
-| AI model | 9 out of 10 | 90% |
+| Language model | 9 out of 10 | 90% |
 
-The AI model classified one statement about government transfers as fiscal contraction instead of fiscal expansion.
+The language model classified one statement about government transfers as fiscal contraction instead of fiscal expansion.
 
 These results come from the earlier demonstration. The corrected code has not yet been run again to update the results and charts.
 
@@ -64,7 +64,7 @@ These directions are assumptions used for this exercise. They are not measured e
    python unemployment_llm_project.py
    ```
 
-Keep the supplied Excel dataset in the same folder as the Python script. The first run needs internet access to download the AI model and may take some time.
+Keep the supplied Excel dataset in the same folder as the Python script. The first run needs internet access to download the language model and may take some time.
 
 ## Main files
 
@@ -79,6 +79,6 @@ The input is an Excel file despite having “csv” in its name. Charts and resu
 
 ## Limitations and next step
 
-This is a small learning and portfolio project. Ten examples are not enough to show how well either method works on other policy documents. The AI model's confidence score also does not guarantee that its classification is correct.
+This is a small learning and portfolio project. Ten examples are not enough to show how well either method works on other policy documents. The language model's confidence score also does not guarantee that its classification is correct.
 
 The next step is to add more policy statements with clear sources and independently checked human labels, then evaluate the methods on examples that were not used to develop the rules.
