@@ -1,5 +1,5 @@
 import pandas as pd
-import numpy as np
+from pathlib import Path
 
 from transformers import pipeline
 
@@ -32,9 +32,29 @@ print("=" * 60)
 print("\nSTEP 1: LOADING DATASET")
 print("-" * 60)
 
-file_name = "unemployment_policy_text.csv.xlsx"
+PROJECT_DIR = Path(__file__).resolve().parent
+OUTPUT_DIR = PROJECT_DIR / "outputs"
+OUTPUT_DIR.mkdir(exist_ok=True)
+file_name = PROJECT_DIR / "unemployment_policy_text.csv.xlsx"
 
 df = pd.read_excel(file_name)
+required_columns = {"id", "institution", "policy_text", "human_category"}
+missing_columns = required_columns - set(df.columns)
+if missing_columns:
+    raise ValueError(f"Missing required columns: {sorted(missing_columns)}")
+if df.empty:
+    raise ValueError("The dataset must contain at least one observation.")
+if df[list(required_columns)].isna().any().any():
+    raise ValueError("Required columns must not contain missing values.")
+if df["policy_text"].astype(str).str.strip().eq("").any():
+    raise ValueError("Policy text must not be blank.")
+POLICY_LABELS = [
+    "fiscal_expansion", "fiscal_contraction", "monetary_easing",
+    "monetary_tightening", "labour_support", "neutral"
+]
+invalid_labels = set(df["human_category"]) - set(POLICY_LABELS)
+if invalid_labels:
+    raise ValueError(f"Unsupported human labels: {sorted(invalid_labels)}")
 
 print("Dataset loaded successfully.")
 print(f"Number of observations: {len(df)}")
@@ -115,6 +135,7 @@ print("-" * 60)
 
 
 def policy_effect_from_category(category):
+    """Return a conceptual assumption, not an estimated unemployment effect."""
 
     if category in [
         "fiscal_expansion",
@@ -152,31 +173,22 @@ def policy_score_from_category(category):
         return 0
 
 
-df["human_unemployment_effect"] = (
+df["human_assumed_direction"] = (
     df["human_category"].apply(
         policy_effect_from_category
     )
 )
 
-df["human_unemployment_score"] = (
+df["human_assumed_score"] = (
     df["human_category"].apply(
         policy_score_from_category
     )
 )
 
 
-policy_score_accuracy = (
-    df["human_unemployment_effect"]
-    ==
-    df["human_category"].apply(
-        policy_effect_from_category
-    )
-).mean()
-
-
 print(
-    f"Policy score accuracy: "
-    f"{policy_score_accuracy * 100:.1f}%"
+    "Directional scores are predefined assumptions, not independently "
+    "validated unemployment predictions or estimated causal effects."
 )
 
 
@@ -217,6 +229,7 @@ def classify_with_transformer(text):
 
     predicted_label = result["labels"][0]
 
+    # Relative model score over the supplied labels; not calibrated correctness.
     confidence = result["scores"][0]
 
     label_mapping = {
@@ -438,22 +451,22 @@ print(
 
 
 # ============================================================
-# STEP 6: POLICY UNEMPLOYMENT EFFECT INDEX
+# STEP 6: ASSUMED DIRECTIONAL POLICY INDEX
 # ============================================================
 
 print("\n" + "=" * 60)
-print("STEP 6: POLICY UNEMPLOYMENT EFFECT INDEX")
+print("STEP 6: ASSUMED DIRECTIONAL POLICY INDEX")
 print("=" * 60)
 
 
-df["transformer_unemployment_effect"] = (
+df["transformer_assumed_direction"] = (
     df["transformer_category"].apply(
         policy_effect_from_category
     )
 )
 
 
-df["transformer_unemployment_score"] = (
+df["transformer_assumed_score"] = (
     df["transformer_category"].apply(
         policy_score_from_category
     )
@@ -461,9 +474,9 @@ df["transformer_unemployment_score"] = (
 
 
 df["effect_prediction_correct"] = (
-    df["human_unemployment_effect"]
+    df["human_assumed_direction"]
     ==
-    df["transformer_unemployment_effect"]
+    df["transformer_assumed_direction"]
 )
 
 
@@ -472,10 +485,10 @@ effect_accuracy = (
 )
 
 
-# Policy Unemployment Effect Index
+# Assumed Directional Policy Index
 
-policy_unemployment_effect_index = (
-    df["transformer_unemployment_score"].mean()
+assumed_directional_policy_index = (
+    df["transformer_assumed_score"].mean()
 )
 
 
@@ -487,10 +500,10 @@ print(
             "id",
             "human_category",
             "transformer_category",
-            "human_unemployment_effect",
-            "transformer_unemployment_effect",
-            "human_unemployment_score",
-            "transformer_unemployment_score",
+            "human_assumed_direction",
+            "transformer_assumed_direction",
+            "human_assumed_score",
+            "transformer_assumed_score",
             "effect_prediction_correct"
         ]
     ].to_string(index=False)
@@ -502,22 +515,22 @@ print("POLICY EFFECT PERFORMANCE")
 print("-" * 60)
 
 print(
-    f"Unemployment-effect accuracy: "
+    f"Mapped-direction agreement: "
     f"{effect_accuracy * 100:.1f}%"
 )
 
 print(
-    f"Policy Unemployment Effect Index: "
-    f"{policy_unemployment_effect_index:.3f}"
+    f"Assumed Directional Policy Index: "
+    f"{assumed_directional_policy_index:.3f}"
 )
 
 
 print("\n" + "-" * 60)
-print("EXPECTED UNEMPLOYMENT EFFECT DISTRIBUTION")
+print("ASSUMED DIRECTION DISTRIBUTION")
 print("-" * 60)
 
 print(
-    df["transformer_unemployment_effect"]
+    df["transformer_assumed_direction"]
     .value_counts()
 )
 
@@ -550,6 +563,7 @@ macro_precision = precision_score(
     y_true,
     y_pred,
     average="macro",
+    labels=POLICY_LABELS,
     zero_division=0
 )
 
@@ -558,6 +572,7 @@ macro_recall = recall_score(
     y_true,
     y_pred,
     average="macro",
+    labels=POLICY_LABELS,
     zero_division=0
 )
 
@@ -566,6 +581,7 @@ macro_f1 = f1_score(
     y_true,
     y_pred,
     average="macro",
+    labels=POLICY_LABELS,
     zero_division=0
 )
 
@@ -608,6 +624,7 @@ print(
 report = classification_report(
     y_true,
     y_pred,
+    labels=POLICY_LABELS,
     zero_division=0
 )
 
@@ -621,9 +638,7 @@ print(report)
 
 # Confusion matrix
 
-labels = sorted(
-    df["human_category"].unique()
-)
+labels = POLICY_LABELS
 
 
 cm = confusion_matrix(
@@ -660,6 +675,7 @@ report_dict = classification_report(
     y_true,
     y_pred,
     output_dict=True,
+    labels=POLICY_LABELS,
     zero_division=0
 )
 
@@ -700,6 +716,24 @@ print(
 )
 
 
+# Calculate baseline metrics from predictions. Include unknown predictions
+# in the macro average so unsupported rule outputs are not silently dropped.
+rule_metric_labels = POLICY_LABELS + (
+    ["unknown"] if "unknown" in set(df["rule_based_category"]) else []
+)
+rule_precision = precision_score(
+    y_true, df["rule_based_category"], labels=rule_metric_labels,
+    average="macro", zero_division=0
+)
+rule_recall = recall_score(
+    y_true, df["rule_based_category"], labels=rule_metric_labels,
+    average="macro", zero_division=0
+)
+rule_f1 = f1_score(
+    y_true, df["rule_based_category"], labels=rule_metric_labels,
+    average="macro", zero_division=0
+)
+
 # Model performance comparison
 
 comparison_df = pd.DataFrame(
@@ -715,17 +749,17 @@ comparison_df = pd.DataFrame(
         ],
 
         "Precision": [
-            1.0,
+            rule_precision,
             macro_precision
         ],
 
         "Recall": [
-            1.0,
+            rule_recall,
             macro_recall
         ],
 
         "F1_Score": [
-            1.0,
+            rule_f1,
             macro_f1
         ]
     }
@@ -766,8 +800,8 @@ print(
 
 
 print(
-    "Overall Transformer performance is "
-    "strong for this demonstration dataset."
+    "These metrics describe only the supplied demonstration dataset; "
+    "they do not establish performance on unseen policy documents."
 )
 
 
@@ -830,7 +864,7 @@ plt.ylim(0, 110)
 plt.tight_layout()
 
 plt.savefig(
-    "model_accuracy_comparison.png",
+    OUTPUT_DIR / "model_accuracy_comparison.png",
     dpi=300
 )
 
@@ -874,7 +908,7 @@ plt.title(
 plt.tight_layout()
 
 plt.savefig(
-    "transformer_confidence_distribution.png",
+    OUTPUT_DIR / "transformer_confidence_distribution.png",
     dpi=300
 )
 
@@ -920,7 +954,7 @@ plt.ylabel(
 plt.tight_layout()
 
 plt.savefig(
-    "transformer_confusion_matrix.png",
+    OUTPUT_DIR / "transformer_confusion_matrix.png",
     dpi=300
 )
 
@@ -941,7 +975,7 @@ print(
 
 
 effect_counts = (
-    df["transformer_unemployment_effect"]
+    df["transformer_assumed_direction"]
     .value_counts()
 )
 
@@ -955,7 +989,7 @@ effect_counts.plot(
 
 
 plt.xlabel(
-    "Expected Unemployment Effect"
+    "Assumed Direction from Policy Category"
 )
 
 plt.ylabel(
@@ -963,7 +997,7 @@ plt.ylabel(
 )
 
 plt.title(
-    "Expected Unemployment Effect Distribution"
+    "Assumed Direction from Policy Category Distribution"
 )
 
 plt.xticks(
@@ -973,7 +1007,7 @@ plt.xticks(
 plt.tight_layout()
 
 plt.savefig(
-    "policy_unemployment_effect_distribution.png",
+    OUTPUT_DIR / "policy_unemployment_effect_distribution.png",
     dpi=300
 )
 
@@ -1034,7 +1068,7 @@ plt.ylim(0, 1.05)
 plt.tight_layout()
 
 plt.savefig(
-    "transformer_confidence_by_category.png",
+    OUTPUT_DIR / "transformer_confidence_by_category.png",
     dpi=300
 )
 
@@ -1091,14 +1125,14 @@ print(
 
 
 print(
-    f"Unemployment-effect accuracy: "
+    f"Mapped-direction agreement: "
     f"{effect_accuracy * 100:.1f}%"
 )
 
 
 print(
-    f"Policy Unemployment Effect Index: "
-    f"{policy_unemployment_effect_index:.3f}"
+    f"Assumed Directional Policy Index: "
+    f"{assumed_directional_policy_index:.3f}"
 )
 
 
@@ -1119,7 +1153,7 @@ final_output_file = (
 
 
 df.to_excel(
-    final_output_file,
+    OUTPUT_DIR / final_output_file,
     index=False
 )
 
@@ -1132,7 +1166,7 @@ validation_output_file = (
 
 
 with pd.ExcelWriter(
-    validation_output_file,
+    OUTPUT_DIR / validation_output_file,
     engine="openpyxl"
 ) as writer:
 

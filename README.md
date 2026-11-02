@@ -1,512 +1,146 @@
-\# LLM-Based Economic Policy Classification
+# Economic Policy Text Classification
 
+## A Python proof of concept for unemployment-related policy analysis
 
+This project compares a keyword baseline with the zero-shot Transformer
+`facebook/bart-large-mnli`. It turns short policy statements into six categories:
+fiscal expansion, fiscal contraction, monetary easing, monetary tightening,
+labour support, and neutral policy.
 
-\## A Proof-of-Concept for Unemployment Analysis
+It demonstrates Python data processing, NLP, classification evaluation,
+error analysis, Excel export, and visualization. The model is used for
+zero-shot classification, without fine-tuning on this dataset.
 
+## Run the project
 
+Use Python 3.11 or 3.12 and an isolated environment. From the repository folder:
 
-\### Overview
+```bash
+python -m venv .venv
+```
 
+Activate it on Windows:
 
+```powershell
+.venv\Scripts\Activate.ps1
+```
 
-This project demonstrates how Large Language Model (LLM)-based Natural Language Processing (NLP) can be applied to economic policy analysis.
+Or on macOS/Linux:
 
+```bash
+source .venv/bin/activate
+```
 
+Then install dependencies and run:
 
-The project uses a zero-shot Transformer model to classify short economic policy statements into different policy categories and then maps those classifications to their potential direction of unemployment effects.
+```bash
+python -m pip install -r requirements.txt
+python unemployment_llm_project.py
+```
 
+The first run requires internet access to download the pretrained model.
+CPU execution can be slow. Dependencies are constrained by major versions,
+but this is not an exact environment lockfile.
 
+The script finds the input relative to its own location. New Excel workbooks
+and five PNG charts are written to `outputs/`. Existing files in that folder
+are overwritten on subsequent runs.
 
-The project is designed as a proof-of-concept demonstrating the integration of:
+## Input
 
+`unemployment_policy_text.csv.xlsx` is an Excel workbook despite its filename.
+Required columns are `id`, `institution`, `policy_text`, and `human_category`.
+The script rejects missing required values, empty data, blank texts, and
+unsupported human categories.
 
+The supplied dataset has 10 demonstration observations. Institutional names
+alone do not verify provenance: real-document extensions should include
+source URLs, dates, exact quotations, and an annotation guide.
 
-\- Python
+## Workflow and validation
 
-\- Natural Language Processing
+1. Load and check the demonstration dataset.
+2. Classify text with explicit keyword rules.
+3. Classify the same text with BART-large-MNLI and six candidate labels.
+4. Compare both sets of predictions with human category labels.
+5. Calculate accuracy and macro precision, recall, and F1 from predictions.
+6. Examine errors, the confusion matrix, and relative model scores.
+7. Map categories to an explicitly assumed directional score.
+8. Export results and charts.
 
-\- Transformer-based language models
+Transformer macro metrics use all six policy categories. Baseline macro
+metrics additionally include `unknown` if the rules return it, penalizing
+unsupported predictions. Macro averages give each included class equal weight;
+undefined precision or recall is set to zero.
 
-\- Economic policy classification
+Model confidence is a relative score over the candidate labels. It is not a
+calibrated probability that a prediction is correct. High/medium/low thresholds
+in the script are descriptive choices.
 
-\- Quantitative model validation
+## Assumed directional score
 
-\- Data visualization
-
-\- Economic interpretation
-
-
-
-\---
-
-
-
-\## Research Motivation
-
-
-
-Economic policy documents contain large amounts of textual information that can be difficult to classify manually.
-
-
-
-Traditional empirical economics often relies on numerical indicators such as:
-
-
-
-\- government expenditure
-
-\- government revenue
-
-\- interest rates
-
-\- government debt
-
-\- unemployment rates
-
-
-
-However, policy decisions are also communicated through textual statements.
-
-
-
-This project explores how LLM-based methods could help transform policy text into structured economic information that could potentially be used in quantitative economic research.
-
-
-
-\---
-
-
-
-\## Research Question
-
-
-
-Can a zero-shot Transformer model classify economic policy statements into meaningful policy categories and identify their potential implications for unemployment?
-
-
-
-\---
-
-
-
-\## Policy Categories
-
-
-
-The project uses six policy categories:
-
-
-
-1\. Fiscal expansion
-
-2\. Fiscal contraction
-
-3\. Monetary easing
-
-4\. Monetary tightening
-
-5\. Labour support
-
-6\. Neutral policy
-
-
-
-\---
-
-
-
-\## Methodology
-
-
-
-The project follows a multi-stage workflow.
-
-
-
-\### Step 1: Dataset Loading
-
-
-
-A small demonstration dataset containing 10 policy statements is loaded using pandas.
-
-
-
-Each observation contains:
-
-
-
-\- ID
-
-\- Date
-
-\- Institution
-
-\- Policy text
-
-\- Human-labelled policy category
-
-\- Human policy score
-
-
-
-\### Step 2: Rule-Based Classification
-
-
-
-A rule-based NLP classifier is created as a baseline.
-
-
-
-The classifier identifies policy categories using predefined economic keywords and phrases.
-
-
-
-\### Step 3: Policy Score
-
-
-
-Policy categories are translated into a simple numerical policy score.
-
-
-
-This provides a structured representation of the qualitative policy information.
-
-
-
-\### Step 4: Zero-Shot Transformer Classification
-
-
-
-The project uses the Hugging Face Transformers library and the BART-large-MNLI model.
-
-
-
-The Transformer performs zero-shot classification without being specifically fine-tuned on the demonstration dataset.
-
-
-
-\### Step 5: Error Analysis
-
-
-
-Transformer predictions are compared with human-labelled categories.
-
-
-
-Incorrect predictions are identified and analysed.
-
-
-
-Model confidence scores are also examined.
-
-
-
-\### Step 6: Unemployment Effect Index
-
-
-
-Policy categories are mapped to a simplified expected unemployment effect:
-
-
-
-| Policy Category | Expected Unemployment Effect | Score |
-
+| Classified policy | Assumed unemployment direction | Score |
 |---|---|---:|
-
 | Fiscal expansion | Decrease | -1 |
-
 | Fiscal contraction | Increase | +1 |
-
 | Monetary easing | Decrease | -1 |
-
 | Monetary tightening | Increase | +1 |
-
 | Labour support | Decrease | -1 |
-
 | Neutral | Neutral | 0 |
 
+The **Assumed Directional Policy Index** is the mean of these assigned scores.
+It summarizes category composition under these assumptions. It does not
+estimate unemployment changes, forecast unemployment, or identify causal effects.
+Actual effects may depend on timing, shock conditions, institutions, and policy
+responses to unemployment.
 
+**Mapped-direction agreement** compares the mapping of predicted categories
+with the mapping of human categories. It is a coarser classification agreement
+measure, not independent validation against observed unemployment outcomes.
+The former self-comparison called “policy score accuracy” has been removed.
 
-The resulting measure is called the:
+## Historical demonstration results
 
+The original README reported these results on the 10 observations:
 
-
-\*\*Policy Unemployment Effect Index\*\*
-
-
-
-This index is a conceptual demonstration rather than an estimated causal effect.
-
-
-
-\### Step 7: Quantitative Validation
-
-
-
-The Transformer is evaluated using:
-
-
-
-\- Accuracy
-
-\- Precision
-
-\- Recall
-
-\- Macro F1-score
-
-\- Confusion matrix
-
-\- Category-level performance
-
-
-
-\### Step 8: Visualization
-
-
-
-The project generates visual outputs showing:
-
-
-
-\- Model accuracy comparison
-
-\- Transformer confidence distribution
-
-\- Confusion matrix
-
-\- Unemployment-effect distribution
-
-\- Confidence by policy category
-
-
-
-\---
-
-
-
-\## Demonstration Results
-
-
-
-The demonstration dataset contains 10 observations.
-
-
-
-\### Model Performance
-
-
-
-| Measure | Rule-Based | Zero-Shot Transformer |
-
+| Measure | Rule-based | Transformer |
 |---|---:|---:|
-
-| Accuracy | 100.0% | 90.0% |
-
-| Macro Precision | 1.000 | 0.944 |
-
-| Macro Recall | 1.000 | 0.917 |
-
-| Macro F1 | 1.000 | 0.911 |
-
-
-
-The Transformer correctly classified 9 out of 10 observations.
-
-
-
-The average Transformer confidence was approximately 0.857.
-
-
-
-The unemployment-effect classification accuracy was 90%.
-
-
-
-\---
-
-
-
-\## Error Analysis
-
-
-
-The Transformer incorrectly classified one observation involving government transfers.
-
-
-
-The human-labelled category was:
-
-
-
-`fiscal\_expansion`
-
-
-
-while the Transformer predicted:
-
-
-
-`fiscal\_contraction`
-
-
-
-The prediction had a confidence score of approximately 0.589.
-
-
-
-This illustrates why LLM-based classification should be validated against human-labelled data rather than being treated as automatically correct.
-
-
-
-\---
-
-
-
-\## Important Limitation
-
-
-
-This project contains only 10 observations.
-
-
-
-Therefore, the reported accuracy, precision, recall and F1-score should NOT be interpreted as evidence of general Transformer performance.
-
-
-
-The project is intentionally designed as a small proof-of-concept demonstrating the research workflow.
-
-
-
-The Policy Unemployment Effect Index is also a conceptual measure and should not be interpreted as a causal estimate of the effect of policy on unemployment.
-
-
-
-\---
-
-
-
-\## Potential Research Extension
-
-
-
-A future research version could use real European policy documents from institutions such as governments, central banks and European institutions.
-
-
-
-A possible extended research pipeline would be:
-
-
-
-Policy documents
-
-→ LLM classification
-
-→ Policy stance
-
-→ Policy score
-
-→ Unemployment-effect score
-
-→ Country-time panel
-
-→ Econometric analysis
-
-
-
-Such an extension could combine textual economic information with conventional macroeconomic variables and panel-data methods.
-
-
-
-Potential applications include:
-
-
-
-\- fiscal policy analysis
-
-\- monetary policy analysis
-
-\- labour-market policy analysis
-
-\- economic shock analysis
-
-\- unemployment forecasting
-
-\- policy coordination measurement
-
-
-
-\---
-
-
-
-\## Technologies
-
-
-
-\- Python
-
-\- pandas
-
-\- NumPy
-
-\- scikit-learn
-
-\- Matplotlib
-
-\- Seaborn
-
-\- Hugging Face Transformers
-
-\- PyTorch
-
-\- Excel
-
-
-
-\---
-
-
-
-\## Project Structure
-
-
-
-```text
-
-unemployment\_llm\_project/
-
-│
-
-├── unemployment\_llm\_project.py
-
-├── unemployment\_policy\_text.csv.xlsx
-
-│
-
-├── unemployment\_policy\_llm\_final\_results.xlsx
-
-├── unemployment\_llm\_validation\_results.xlsx
-
-│
-
-├── model\_accuracy\_comparison.png
-
-├── transformer\_confidence\_distribution.png
-
-├── transformer\_confusion\_matrix.png
-
-├── policy\_unemployment\_effect\_distribution.png
-
-├── transformer\_confidence\_by\_category.png
-
-│
-
-├── README.md
-
-├── requirements.txt
-
-└── .gitignore
-
+| Accuracy | 100% | 90% |
+| Macro precision | Not independently verified | 0.944 |
+| Macro recall | Not independently verified | 0.917 |
+| Macro F1 | Not independently verified | 0.911 |
+
+The original baseline precision, recall, and F1 were hard-coded as 1.0.
+The corrected script now computes them. The reported Transformer error involved
+government transfers classified as fiscal contraction instead of fiscal expansion.
+
+These figures are historical reports, not a fresh execution of the corrected
+script. Root-level Excel results and PNGs are legacy artifacts; regenerated
+results belong in `outputs/` and use the corrected terminology. Output filenames
+retain their original names for continuity, while direction-related columns
+now use `human_assumed_*` and `transformer_assumed_*`.
+
+## Limitations and next research steps
+
+Ten short statements cannot establish general model performance. The baseline
+rules may fit the wording of the demonstration examples. Human labels require
+a documented annotation process; this repository does not establish independent
+annotation or inter-annotator agreement.
+
+A research extension should collect a larger sourced corpus, define annotation
+rules, obtain independent human labels, and reserve an untouched evaluation set.
+Include paraphrases, negation, mixed policies, and ambiguous statements. Compare
+models on the same held-out observations and report class counts and uncertainty.
+
+Only after that validation should text-derived policy indicators be linked to
+country-time data for econometric analysis. Such analysis needs a separate
+identification strategy for claims about unemployment effects.
+
+## Repository structure
+
+- `unemployment_llm_project.py`: classification, evaluation, and export.
+- `unemployment_policy_text.csv.xlsx`: supplied demonstration input.
+- `requirements.txt`: Python dependencies.
+- `.gitignore`: excludes local environments, generated outputs, and Excel lock files.
+- `outputs/`: created when the script runs.
+- Root-level PNG and result workbooks: historical demonstration artifacts.
